@@ -51,6 +51,18 @@ void tasks::make_connection(int listenfd,int epollfd,std::unordered_set<int>& cl
     connection_pool *mysql_pool=connection_pool::getinstance();
     MYSQL * mysql_connection= nullptr;
     mysql_connection=mysql_pool->dispath_connection();
+    std::string sql_operation=std::format("select count(*) from user where username='{}';",account);
+
+
+    mysql_query(mysql_connection,sql_operation.data());
+    MYSQL_RES * res= nullptr;
+    res= mysql_store_result(mysql_connection);
+    if(std::string(mysql_fetch_row(res)[0])=="0")
+    {
+        mysql_pool->free_connection(std::move(mysql_connection));
+        return;
+    }
+
 
     mysql_pool->free_connection(std::move(mysql_connection));
 
