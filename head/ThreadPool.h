@@ -7,6 +7,9 @@
 #include<functional>
 #include<format>
 #include <semaphore>
+
+int const THREAD_SEMAPHOR_MAX=100;
+
 class ThreadPool
 {
 public:
@@ -60,6 +63,6 @@ private:
     std::queue<std::function<void()>> tasks;
     std::binary_semaphore mutex_task;        //互斥访问任务队列
     std::binary_semaphore mutex_stop;                 //互斥访问stop标记
-    std::counting_semaphore<1> task_number;
+    std::counting_semaphore<THREAD_SEMAPHOR_MAX> task_number;
     bool stop;              //线程停止标志位
 };

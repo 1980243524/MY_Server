@@ -14,6 +14,7 @@ void connection_pool::init(std::string url, std::string User, std::string PassWo
     this->User = User;
     this->PassWord = PassWord;
     this->DatabaseName = DBName;
+    this->MaxConn=MaxConn;
 
     for(int i=0;i<MaxConn;i++)
     {
@@ -30,10 +31,28 @@ void connection_pool::init(std::string url, std::string User, std::string PassWo
             std::cout<<std::format("Error:{}\n",mysql_error(con));
             exit(1);
         }
+        connections_mutex.acquire();
         connections.push(con);
+        connections_mutex.release();
+
+        num_free_connection.release();
     }
 }
 
+MYSQL* connection_pool::dispath_connection()
+{
+   MYSQL* m= nullptr;
+
+   num_free_connection.acquire();   //空闲连接信号量P操作
+
+   connections_mutex.acquire();     //连接队列互斥
+   m=connections.front();
+   connections.pop();
+   connections_mutex.release();     //连接队列互斥结束
+
+   return m;
+
+}
 connection_pool::~connection_pool()
 {
 
