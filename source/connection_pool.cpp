@@ -33,3 +33,8 @@ void connection_pool::init(std::string url, std::string User, std::string PassWo
         connections.push(con);
     }
 }
+
+connection_pool::~connection_pool()
+{
+
+}

@@ -6,10 +6,11 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <unordered_set>
+#include <sstream>
 #ifndef MY_WEBSERVER_TASKS_H
 #define MY_WEBSERVER_TASKS_H
-int const MAXLINE=80;
 
+int const USER_INFO_MAX=40;
 class tasks
 {
 public:
@@ -29,21 +30,25 @@ void tasks::make_connection(int listenfd,int epollfd,std::unordered_set<int>& cl
     std::cout<<"有客户访问"<<std::endl;
     //write(connfd,"连接到服务器",sizeof("连接到服务器"));
     std::string account,passwd;
-    char buf[MAXLINE];
-    int ret=recv(connfd,buf,MAXLINE,0);
-    account=std::string(buf);
-    ret=recv(connfd,buf,MAXLINE,0);
-    passwd=std::string(buf);
-
+    char buf[USER_INFO_MAX];
+    int ret=recv(connfd,buf,USER_INFO_MAX,0);
     if(ret==-1)
     {
         close(connfd);
         std::cout<<std::format("client {} closed connection\n",connfd);
     }
-    else
-    {
-        std::cout<<std::format("账号：{}\n密码：{}\n",account,passwd);
-    }
+    std::string user_info=std::string(buf);
+
+    int acc_len=0;
+    std::istringstream ss(user_info.substr(0,user_info.find('#'))); //获取账号字段长度
+    ss >> acc_len;
+    user_info=user_info.substr(user_info.find('#')+1);
+
+    //将账号密码分离
+    account=user_info.substr(0,acc_len);
+    passwd=user_info.substr(acc_len);
+    std::cout<<std::format("账号：{}\n密码：{}\n",account,passwd);
+
 
     //send(connfd,"连接成功",sizeof("连接成功"),0);
     epoll_event tep;

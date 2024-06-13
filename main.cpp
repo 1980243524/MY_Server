@@ -6,7 +6,7 @@
 #include<iostream>
 #include<format>
 #include "head/ThreadPool.h"
-
+#include "head/connection_pool.h"
 #include <cassert>
 #include <cstring>
 #include "tasks.h"
@@ -27,8 +27,8 @@ int main(int argc, char *argv[])
     std::unordered_set<int> clients;          //存储客户文件描述符
 
     int port = atoi(argv[1]);
-    //connection_pool *connPool = connection_pool::getinstance();
-    //connPool->init("localhost", "xjc", "593509663", "test", 3306, 8);
+    connection_pool *connPool = connection_pool::getinstance();
+    connPool->init("localhost", "xjc", "593509663", "test", 3306, 8);
     ThreadPool* th_pool=new ThreadPool(8);
 
     int listenfd = socket(PF_INET, SOCK_STREAM, 0);

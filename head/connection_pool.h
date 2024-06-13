@@ -18,8 +18,8 @@ private:
 
     std::queue<MYSQL *> connections;            //连接池队列
     std::binary_semaphore mutex1;       //定义互斥信号量
-    std::counting_semaphore<1> num_conn;       //连接数量信号量
-    connection_pool():CurConn(0),FreeConn(0), mutex1(1), num_conn(0){};
+    std::counting_semaphore<1> num_free_connection;
+    connection_pool():CurConn(0),FreeConn(0), mutex1(1),num_free_connection(0){};
 	~connection_pool();
 
     std::string url;			 //主机地址
@@ -27,5 +27,6 @@ private:
     std::string User;		 //登陆数据库用户名
     std::string PassWord;	 //登陆数据库密码
     std::string DatabaseName; //使用数据库名
+
 
 };
