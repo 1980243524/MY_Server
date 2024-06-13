@@ -11,6 +11,8 @@
 #define MY_WEBSERVER_TASKS_H
 
 int const USER_INFO_MAX=40;
+int const ACCOUNT_ERROR=1;
+int const PASSWD_ERROR=2;
 class tasks
 {
 public:
@@ -30,7 +32,7 @@ void tasks::make_connection(int listenfd,int epollfd,std::unordered_set<int>& cl
     std::cout<<"有客户访问"<<std::endl;
     //write(connfd,"连接到服务器",sizeof("连接到服务器"));
     std::string account,passwd;
-    char buf[USER_INFO_MAX];
+    char *buf=new char[USER_INFO_MAX];
     int ret=recv(connfd,buf,USER_INFO_MAX,0);
     if(ret==-1)
     {
@@ -38,7 +40,7 @@ void tasks::make_connection(int listenfd,int epollfd,std::unordered_set<int>& cl
         std::cout<<std::format("client {} closed connection\n",connfd);
     }
     std::string user_info=std::string(buf);
-
+    std::cout<<user_info<<std::endl;
     int acc_len=0;
     std::istringstream ss(user_info.substr(0,user_info.find('#'))); //获取账号字段长度
     ss >> acc_len;
@@ -51,19 +53,48 @@ void tasks::make_connection(int listenfd,int epollfd,std::unordered_set<int>& cl
     connection_pool *mysql_pool=connection_pool::getinstance();
     MYSQL * mysql_connection= nullptr;
     mysql_connection=mysql_pool->dispath_connection();
+
     std::string sql_operation=std::format("select count(*) from user where username='{}';",account);
 
 
     mysql_query(mysql_connection,sql_operation.data());
     MYSQL_RES * res= nullptr;
     res= mysql_store_result(mysql_connection);
-    if(std::string(mysql_fetch_row(res)[0])=="0")
+    int x;
+    if(std::string(mysql_fetch_row(res)[0])=="0")        //判断账号是否存在
     {
+        x=ACCOUNT_ERROR;
+        x=htonl(x);
         mysql_pool->free_connection(std::move(mysql_connection));
+        send(connfd,&x,sizeof(x),0);
+        recv(connfd, buf,sizeof(buf),0);
+        close(connfd);
+        std::cout<<connfd<<std::endl;
+        std::cout<<"账号错误"<<std::endl;
+        delete buf;
+        return;
+    }
+    sql_operation=std::format("select passwd from user where username='{}';",account);
+    std::cout<<mysql_query(mysql_connection,sql_operation.data());
+
+    res= mysql_store_result(mysql_connection);
+    if(mysql_fetch_row(res)[0]!=passwd)
+    {
+        x=PASSWD_ERROR;
+        x=htonl(x);
+        mysql_pool->free_connection(std::move(mysql_connection));
+        send(connfd,&x,sizeof(x),0);
+        recv(connfd, buf,sizeof(buf),0);
+        close(connfd);
+        std::cout<<connfd<<std::endl;
+        std::cout<<"密码错误"<<std::endl;
+        delete buf;
         return;
     }
 
-
+    x=-1;
+    x= htonl(x);
+    send(connfd,&x,sizeof(x),0);
     mysql_pool->free_connection(std::move(mysql_connection));
 
     //send(connfd,"连接成功",sizeof("连接成功"),0);
@@ -71,5 +102,6 @@ void tasks::make_connection(int listenfd,int epollfd,std::unordered_set<int>& cl
     tep.events=EPOLLIN;
     tep.data.fd=connfd;
     ret=epoll_ctl(epollfd,EPOLL_CTL_ADD,connfd,&tep);
+    delete buf;
     assert(ret>=0);
 }
