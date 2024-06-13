@@ -8,7 +8,7 @@ class connection_pool
 public:
     static connection_pool *getinstance();      //单例模式
     MYSQL* dispath_connection();                   //为请求分配连接
-    bool free_connection();                     //释放连接
+    bool free_connection(MYSQL* (&&m));                     //释放连接
     void destroy_pool();                         //销毁线程池
     void init(std::string url, std::string User, std::string PassWord, std::string DBName, int Port, unsigned int MaxConn);
 
