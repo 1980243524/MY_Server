@@ -75,20 +75,3 @@ int main(int argc, char *argv[])
     }
 
 
-//    ThreadPool pool(4);
-//    int x;
-//    std::cout<<std::format("输入1分配线程执行累加n次任务")<<std::endl;
-//    std::cout<<std::format("输入2分配线程执行求-1的n次方任务")<<std::endl;
-//    std::cout<<std::format("输入3分配线程执行累减n次任务")<<std::endl;
-//    std::cout<<std::format("输入0结束进程")<<std::endl;
-//    while(1)
-//    {
-//        std::cin>>x;
-//        if(x==1) pool.addTask<int(long)>(accumulation,1000000000);
-//        else if(x==2) pool.addTask<int(long)>(multiply_n,1000000000);
-//        else if(x==3) pool.addTask<int(long)>(minus_n,1000000000);
-//        else if(x==0) break;
-//    }
-
-}
-

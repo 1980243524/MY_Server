@@ -11,6 +11,7 @@
 #define MY_WEBSERVER_TASKS_H
 
 int const USER_INFO_MAX=40;
+int const NOT_ERROR=-1;
 int const ACCOUNT_ERROR=1;
 int const PASSWD_ERROR=2;
 class tasks
@@ -40,7 +41,7 @@ void tasks::make_connection(int listenfd,int epollfd,std::unordered_set<int>& cl
         std::cout<<std::format("client {} closed connection\n",connfd);
     }
     std::string user_info=std::string(buf);
-    std::cout<<user_info<<std::endl;
+
     int acc_len=0;
     std::istringstream ss(user_info.substr(0,user_info.find('#'))); //获取账号字段长度
     ss >> acc_len;
@@ -60,13 +61,11 @@ void tasks::make_connection(int listenfd,int epollfd,std::unordered_set<int>& cl
     mysql_query(mysql_connection,sql_operation.data());
     MYSQL_RES * res= nullptr;
     res= mysql_store_result(mysql_connection);
-    int x;
+
     if(std::string(mysql_fetch_row(res)[0])=="0")        //判断账号是否存在
     {
-        x=ACCOUNT_ERROR;
-        x=htonl(x);
         mysql_pool->free_connection(std::move(mysql_connection));
-        send(connfd,&x,sizeof(x),0);
+        send(connfd,&ACCOUNT_ERROR,sizeof(ACCOUNT_ERROR),0);
         recv(connfd, buf,sizeof(buf),0);
         close(connfd);
         std::cout<<connfd<<std::endl;
@@ -80,10 +79,9 @@ void tasks::make_connection(int listenfd,int epollfd,std::unordered_set<int>& cl
     res= mysql_store_result(mysql_connection);
     if(mysql_fetch_row(res)[0]!=passwd)
     {
-        x=PASSWD_ERROR;
-        x=htonl(x);
+
         mysql_pool->free_connection(std::move(mysql_connection));
-        send(connfd,&x,sizeof(x),0);
+        send(connfd,&PASSWD_ERROR,sizeof(PASSWD_ERROR),0);
         recv(connfd, buf,sizeof(buf),0);
         close(connfd);
         std::cout<<connfd<<std::endl;
@@ -92,12 +90,10 @@ void tasks::make_connection(int listenfd,int epollfd,std::unordered_set<int>& cl
         return;
     }
 
-    x=-1;
-    x= htonl(x);
-    send(connfd,&x,sizeof(x),0);
+    send(connfd,&NOT_ERROR,sizeof(NOT_ERROR),0);
+
     mysql_pool->free_connection(std::move(mysql_connection));
 
-    //send(connfd,"连接成功",sizeof("连接成功"),0);
     epoll_event tep;
     tep.events=EPOLLIN;
     tep.data.fd=connfd;
