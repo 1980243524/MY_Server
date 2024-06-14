@@ -16,11 +16,9 @@ static int epollfd = 0;
 
 
 
-int main(int argc, char *argv[])
-{
-    if (argc <= 1)
-    {
-        std::cout<<std::format("请输入端口号\n");
+int main(int argc, char *argv[]) {
+    if (argc <= 1) {
+        std::cout << std::format("请输入端口号\n");
         return 1;
     }
     int nready;
@@ -29,14 +27,14 @@ int main(int argc, char *argv[])
     int port = atoi(argv[1]);
     connection_pool *connPool = connection_pool::getinstance();
     connPool->init("localhost", "xjc", "593509663", "test", 3306, 8);
-    ThreadPool* th_pool=new ThreadPool(8);
+    ThreadPool *th_pool = new ThreadPool(8);
 
     int listenfd = socket(PF_INET, SOCK_STREAM, 0);
     assert(listenfd >= 0);
 
     int ret = 0;
     sockaddr_in address;
-    memset(&address,0,sizeof(sockaddr_in));
+    memset(&address, 0, sizeof(sockaddr_in));
 
     //定义套接字
     address.sin_family = AF_INET;
@@ -45,33 +43,32 @@ int main(int argc, char *argv[])
 
     int flag = 1;
     setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
-    ret = bind(listenfd, (struct sockaddr *)&address, sizeof(address));
+    ret = bind(listenfd, (struct sockaddr *) &address, sizeof(address));
     assert(ret >= 0);
     ret = listen(listenfd, 5);
     assert(ret >= 0);
 
     //定义事件
     epoll_event tep;
-    tep.events=EPOLLIN;
-    tep.data.fd=listenfd;
+    tep.events = EPOLLIN;
+    tep.data.fd = listenfd;
     epoll_event events[MAX_EVENT_NUMBER];
     epollfd = epoll_create(5);
     assert(epollfd != -1);
 
-    ret=epoll_ctl(epollfd,EPOLL_CTL_ADD,listenfd,&tep);
+    ret = epoll_ctl(epollfd, EPOLL_CTL_ADD, listenfd, &tep);
     assert(ret >= 0);
-    while(1)
-    {
-        nready= epoll_wait(epollfd,events,MAX_EVENT_NUMBER,-1);
-        assert(nready>=0);
-        for(int i=0;i<nready;i++)
-        {
-            if(events[i].data.fd==listenfd)
-            {
-                th_pool->addTask<void(int,int,std::unordered_set<int>&)>(tasks::make_connection,listenfd,epollfd,clients);       //为线程池添加建立连接的任务
+    while (1) {
+        nready = epoll_wait(epollfd, events, MAX_EVENT_NUMBER, -1);
+        assert(nready >= 0);
+        for (int i = 0; i < nready; i++) {
+            if (events[i].data.fd == listenfd) {
+                th_pool->addTask<void(int, int, std::unordered_set<int> &)>(tasks::make_connection, listenfd, epollfd,
+                                                                            clients);       //为线程池添加建立连接的任务
             }
 
         }
     }
 
 
+}
