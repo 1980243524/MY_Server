@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
 
     int port = atoi(argv[1]);
     connection_pool *connPool = connection_pool::getinstance();
-    connPool->init("localhost", "xjc", "593509663", "test", 3306, 8);
+    connPool->init("localhost", "root", "593509663", "test", 3306, 8);
     ThreadPool *th_pool = new ThreadPool(8);
 
     int listenfd = socket(PF_INET, SOCK_STREAM, 0);

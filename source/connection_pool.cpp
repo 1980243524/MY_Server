@@ -1,7 +1,5 @@
 #include"../head/connection_pool.h"
 
-#include <format>
-
 connection_pool *connection_pool::getinstance()
 {
     static connection_pool connPool;

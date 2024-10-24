@@ -1,7 +1,11 @@
+#ifndef MY_WEBSERVER_CONNECTION_POOL_H
+#define MY_WEBSERVER_CONNECTION_POOL_H
 #include<mysql/mysql.h>
 #include<queue>
 #include<semaphore>
 #include <iostream>
+#include<format>
+
 int const CONNECT_SEMAPHOR_MAX=100;
 class connection_pool
 {
@@ -29,3 +33,4 @@ private:
 
 
 };
+#endif

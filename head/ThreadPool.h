@@ -1,3 +1,5 @@
+#ifndef MY_WEBSERVER_THREADPOOL_H
+#define MY_WEBSERVER_THREADPOOL_H
 #include<thread>
 #include<iostream>
 #include<mutex>
@@ -66,3 +68,4 @@ private:
     std::counting_semaphore<THREAD_SEMAPHOR_MAX> task_number;
     bool stop;              //线程停止标志位
 };
+#endif
