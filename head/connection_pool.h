@@ -20,9 +20,9 @@ private:
     unsigned int MaxConn;  //最大连接数
 
     std::queue<MYSQL *> connections;            //连接池队列
-    std::binary_semaphore connections_mutex;       //定义互斥信号量
+    std::mutex connections_mutex;       //定义互斥信号量
     std::counting_semaphore<CONNECT_SEMAPHOR_MAX> num_free_connection;
-    connection_pool(): connections_mutex(1),num_free_connection(0){};
+    connection_pool(): num_free_connection(0){};
 	~connection_pool();
 
     std::string url;			 //主机地址

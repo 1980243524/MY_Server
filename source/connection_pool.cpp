@@ -29,9 +29,9 @@ void connection_pool::init(std::string url, std::string User, std::string PassWo
             std::cout<<std::format("Error:{}\n",mysql_error(con));
             exit(1);
         }
-        connections_mutex.acquire();
+        
+        std::lock_guard lock(connections_mutex);
         connections.push(con);
-        connections_mutex.release();
 
         num_free_connection.release();
     }
@@ -43,19 +43,17 @@ MYSQL* connection_pool::dispath_connection()
 
    num_free_connection.acquire();   //空闲连接信号量P操作
 
-   connections_mutex.acquire();     //连接队列互斥
+   std::lock_guard lock(connections_mutex);
    m=std::move(connections.front());
    connections.pop();
-   connections_mutex.release();     //连接队列互斥结束
 
    return m;
 }
 
 bool connection_pool::free_connection(MYSQL* (&&m))
 {
-    connections_mutex.acquire();
+    std::lock_guard lock(connections_mutex);
     connections.push(m);
-    connections_mutex.release();
     num_free_connection.release();
 
     return true;
