@@ -8,13 +8,44 @@
 #include <unistd.h>
 #include<vector>
 #include"../head/util.h"
-const int BUFFER_SIZE = 1024;
+
 
 std::istream& operator>>(std::istream& in,Require& r){
 
-    in>>r.Data;
-    r.Length=r.Data.size();
+    in>>r.m_data;
+    r.m_head.Length=r.m_data.size();
     return in;
+}
+
+int ParseHead(int connfd,Response::Head& head){
+    int ret=recv(connfd,&head,Response::HEADLEN,0);
+    if(ret<0) {
+        std::cout<<errno<<std::endl;
+        return -1;
+    }
+    return 0;
+}
+
+int ParseResponse(int connfd,Response& response){
+    int ret=ParseHead(connfd,response.m_head);
+    if(ret<0) std::cout<<"头部解析失败"<<std::endl;
+    std::vector<std::byte> buffer(response.m_head.Length);
+    size_t received = 0;
+    while (received < response.m_head.Length) {
+        ssize_t ret = recv(connfd, buffer.data(), response.m_head.Length - received, 0);
+        if (ret == -1) {
+            std::cerr << "接收失败: " << strerror(errno) << std::endl;
+            return -1;
+        } else if (ret == 0) {
+            std::cout << "服务器关闭了连接" << std::endl;
+            return -1;
+        }
+        received += ret;
+    }
+    // 反序列化 std::string
+    response.m_data.assign(reinterpret_cast<const char*>(buffer.data()), response.m_head.Length);
+    if(received<0) return -1;
+    return 0;
 }
 int main() {
     // 1. 创建套接字
@@ -48,7 +79,7 @@ int main() {
 
     
     Require input;
-    input.operation=1;
+    input.m_head.operation=1;
     std::vector<std::byte> buffer;
     
     // 4. 通信循环
@@ -64,24 +95,19 @@ int main() {
         }
         buffer=Serialize(input);
         // 发送数据到服务器
-        ssize_t bytes_sent = send(client_socket, buffer.data(), input.size(), 0);
+        size_t bytes_sent = send(client_socket, buffer.data(), input.size(), 0);
         if (bytes_sent == -1) {
             std::cerr << "发送失败: " << strerror(errno) << std::endl;
             break;
         }
+
         // 接收服务器响应
-        std::vector<std::byte> get(1024);
-        ssize_t bytes_received = recv(client_socket, get.data(), BUFFER_SIZE - 1, 0);
-        if (bytes_received == -1) {
-            std::cerr << "接收失败: " << strerror(errno) << std::endl;
-            break;
-        } else if (bytes_received == 0) {
-            std::cout << "服务器关闭了连接" << std::endl;
-            break;
-        }
+        Response response;
+        int ret=ParseResponse(client_socket,response);
+        if(ret<0) return 0;
 
         // 处理接收数据
-        std::cout << "服务器响应: " << reinterpret_cast<const char*>(get.data()) << std::endl;
+        std::cout << "服务器响应: " <<response.m_data<< std::endl;
     }
 
     // 5. 关闭套接字

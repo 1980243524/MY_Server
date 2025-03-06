@@ -11,13 +11,15 @@
 class Timer{
 public:
     using ptr=std::shared_ptr<Timer>;
-    using milisecond=int;
+    using millisecond=int;
     using second=int;
     Timer()=default;
-    ~Timer(){};
+    ~Timer(){
+        Stop();
+    };
     template<class F,class... Args>
     void SetEvent(F&& f,Args&&... args);
-    void Tick(milisecond interval);
+    void Tick(millisecond interval);
     void Start(second passtime);
     void Stop();
     void Reset(second passtime);
@@ -29,16 +31,16 @@ private:
 private:
 
     std::function<void()> cb;
-    std::shared_mutex m_cb_mutex;
-    std::mutex m_time_mutex;
+    std::mutex m_mutex;
     std::chrono::steady_clock::time_point m_time;
     std::chrono::steady_clock::duration m_interval;
     std::atomic<bool> m_stoped=true;
+    std::shared_ptr<std::thread> m_thread;
 };
 
 template<class F,class... Args>
 void Timer::SetEvent(F&& f,Args&&... args){
-    std::unique_lock lock(m_cb_mutex);
+    std::lock_guard lock(m_mutex);
     cb=std::bind(std::forward<F>(f),std::forward<Args>(args)...);
     m_stoped=true;
 }

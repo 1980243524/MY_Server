@@ -9,7 +9,7 @@
 #include<functional>
 #include<format>
 #include <semaphore>
-
+#include <future>
 int const THREAD_SEMAPHOR_MAX=100;
 
 class ThreadPool
@@ -19,7 +19,7 @@ public:
     ThreadPool(int numThreads);
     ~ThreadPool();
     template<class F,class... Args>
-    void addTask(F &&f,Args&&... args);
+    auto addTask(F &&f,Args&&... args)->std::future<decltype(f(args...))>;
 private:
     void run();
 
@@ -55,14 +55,23 @@ ThreadPool::~ThreadPool()
 }
 
 template<class F,class... Args>
-void ThreadPool::addTask(F &&f,Args&&... args)
+auto ThreadPool::addTask(F &&f,Args&&... args)->std::future<decltype(f(args...))>
 {
-    std::function<void()>task = std::bind(std::forward<F>(f),std::forward<Args>(args)...);
-    
-    std::lock_guard lock(m_mutex);
-    tasks.emplace(std::move(task));
+    using RetType=decltype(f(args...));
 
+    auto task = std::make_shared<std::packaged_task<RetType()> >(
+        std::bind(std::forward<F>(f), std::forward<Args>(args)...)
+    );
+
+    std::future<RetType> res = task->get_future();
+    {
+        std::lock_guard lock(m_mutex);
+        if(stop)
+            throw std::runtime_error("enqueue on stopped ThreadPool");
+        tasks.emplace([task](){ (*task)(); });
+    }
     m_taskNum.release();
+    return res;
 }
 
 void ThreadPool::run(){

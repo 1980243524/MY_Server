@@ -3,7 +3,7 @@
 int main(){
     ChatServer server;
 
-    server.Init("127.0.0.1",8080,10);
+    server.Init("localhost",8080,10,"root","593509663","serverdb",3306,5);
 
     server.Start();
 }

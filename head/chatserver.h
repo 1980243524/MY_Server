@@ -11,49 +11,54 @@
 #include"util.h"
 #include<unordered_map>
 #include"user.h"
+#include"dbPool.h"
 #define MAX_EVENT_NUMBER 10000 //最大事件数
 int const OPEN_MAX=1000;
-static int epollfd = 0;
 
-const int LOGIN=1;
-
-
-
-struct Response{
-    int Length;
-    int Code;
-    std::vector<std::byte> Data;
-};
 
 class ChatServer{
 public: 
     ChatServer()=default;
     ~ChatServer()=default;
     void Start();
-    void Init(const std::string& ip,const int& port,const int& threadNum);
+    void Init(const std::string& Severip,const int& Serverport,const int& threadNum,
+        const std::string DBUser, const std::string DBPassWord,const std::string DBName,const int DBPort, const unsigned int DBConnNum);
     void Stop();
     void Listen();
 
 private:
-    void ParseRequire(Require &require,int connfd);
-    static void ProcessRequire(void* arg,int connfd);
     void addfd(int fd, bool oneshot );
     void reSetfd(int fd, bool oneshot );
-    int ReceiveRequire(int sockfd, Require& require);
+    static void ProcessRequire(void* arg,int connfd);
+    int ParseRequire(int connfd);
+    int ParseHead(int connfd,Require::Head& head);
+
+    int UserOnline();
+    int UserDownline(int connfd);
+    int LogIn();
+    int SignUp();
+    int Echo(int connfd,std::string message);
+    int MakeFriend();
+    int PublicChat();
+    int PrivateChat();
 private:
     ThreadPool::ptr m_threadPool;
+    DbPool::ptr m_dbPool;
     std::string m_ip;
     int m_eopllfd;
     int m_port;
     int m_listenfd;
     std::unordered_map<int,User> m_users;
-    
+    std::mutex m_mutex;
 };
 
-void ChatServer::Init(const std::string& ip, const int& port, const int& threadNum){
-    m_ip=ip;
-    m_port=port;
+void ChatServer::Init(const std::string& Severip,const int& Serverport,const int& threadNum,
+    const std::string DBUser, const std::string DBPassWord,const std::string DBName,const int DBPort, const unsigned int DBConnNum){
+    m_ip=Severip;
+    m_port=Serverport;
     m_threadPool=std::make_shared<ThreadPool>(threadNum);
+    m_dbPool=DbPool::getinstance();
+    m_dbPool->init(Severip,DBUser,DBPassWord,DBName,DBPort,DBConnNum);
 }
 
 void ChatServer::addfd(int fd, bool oneshot ) {
@@ -99,14 +104,7 @@ void ChatServer::Start(){
         for (int i = 0; i < nready; i++) {
             int sockfd=events[i].data.fd;
             if (sockfd == m_listenfd) {
-                struct sockaddr_in client;
-                socklen_t client_length = sizeof( client );
-                int conn_fd = accept( m_listenfd, ( struct sockaddr * )&client,
-                                        &client_length );
-
-                //对每个非监听文件描述符都注册 EPOLLONESHOT 事件
-                //添加的是刚accept的fd
-                addfd(conn_fd, true );
+                UserOnline();
             }else if(events[i].events & EPOLLIN){
                 m_threadPool->addTask(ProcessRequire,this,sockfd);
             }
@@ -136,53 +134,113 @@ void ChatServer::Listen(){
 }
 
 
-//解析请求对应的操作
- void ChatServer::ParseRequire(Require &require,int connfd){
-    switch (require.operation){
-        case 1:         //echo server
-            write(connfd,require.Data.data(),require.Data.size());
-        break;
-        case 2:
-        break;
-    }
-}
-
-
 //处理客户端发出的请求
 void ChatServer::ProcessRequire(void* arg,int connfd){
     ChatServer* server=(ChatServer*)arg;
-    Require require;
-    int ret=server->ReceiveRequire(connfd,require);
+    
+    int ret=server->ParseRequire(connfd);
     if(ret<0) return ;
-    server->ParseRequire(require,connfd);
     server->reSetfd(connfd,true);
 }
 
-//接收请求数据
-int ChatServer::ReceiveRequire(int connfd, Require& require) {
-
-    recv(connfd,&require.Length,sizeof(int),0);
-    std::vector<std::byte> buffer(require.size());
-    memcpy(buffer.data(),&require.Length,sizeof(int));
-    recv(connfd,&require.operation,sizeof(int),0);
-    memcpy(buffer.data()+sizeof(int),&require.operation,sizeof(int));
+//解析请求对应的操作
+int ChatServer::ParseRequire(int connfd) {
+    Require require;
+    int ret=ParseHead(connfd,require.m_head);
+    //require.m_data.resize()
+    if(ret<0) return -1;
+    std::vector<std::byte> buffer(require.m_head.Length);
 
     size_t received = 0;
-    while (received < require.Length) {
-        ssize_t ret = recv(connfd, buffer.data()+8, require.Length - received, 0);
+    while (received < require.m_head.Length) {
+        ssize_t ret = recv(connfd, buffer.data(), require.m_head.Length - received, 0);
         if (ret <= 0) {
             // 处理错误（ret == 0：连接关闭；ret < 0：错误）
             return -1;
         }
         received += ret;
     }
-
-
     // 反序列化 std::string
-
     
-    require.Data.assign(reinterpret_cast<const char*>(&buffer[8]), require.Length);
-    return received;
+    require.m_data.assign(reinterpret_cast<const char*>(buffer.data()), require.m_head.Length);
+    if(received<0) return -1;
+
+    switch (require.m_head.DestinationId){
+        case 0:
+            LogIn();
+            break;
+        case 1:         
+            SignUp();
+            break;
+        case 2:
+            Echo(connfd,require.m_data);
+            break;
+        case 3:
+            PublicChat();
+            break;
+        case 4:
+            PrivateChat();
+            break;
+        case 5:
+            MakeFriend();
+            break;
+        default:
+        
+
+    }
+    return 0;
+}
+int ChatServer::ParseHead(int connfd,Require::Head& head){
+    int ret=recv(connfd,&head,Require::HEADLEN,0);
+    if(ret<0) {
+        std::cout<<errno<<std::endl;
+        return -1;
+    }
+    return 0;
 }
 
+int ChatServer::Echo(int connfd,std::string message){
+    Response response;
+    response=message;
+    response.m_head.Code=200;
+    response.m_head.type=1;
+    int ret=write(connfd,Serialize(response).data(),response.size());
+    if(ret<0) return -1;
+    return 0;
+}
+
+int ChatServer::UserOnline(){
+    struct sockaddr_in client;
+    socklen_t client_length = sizeof( client );
+    int conn_fd = accept( m_listenfd, ( struct sockaddr * )&client,&client_length );
+    if(conn_fd<0){
+        std::cout<<errno<<std::endl;
+        return -1;
+    }
+    m_users[conn_fd]=User(std::string("user")+std::to_string(conn_fd),conn_fd);
+    std::cout<<std::string("user")+std::to_string(conn_fd)+"online"<<std::endl;
+    m_users[conn_fd].m_timer->SetEvent(&ChatServer::UserDownline,this,conn_fd);
+    m_users[conn_fd].m_timer->Start(300);
+    //对每个非监听文件描述符都注册 EPOLLONESHOT 事件
+    addfd(conn_fd, true );
+    return 0;
+}
+
+int ChatServer::UserDownline(int connfd){
+
+    int ret=close(connfd);
+    if(ret<0) {
+        std::cout<<errno<<std::endl;
+        return -1;
+    }
+    std::cout<<m_users[connfd].m_name+"downline"<<std::endl;
+    m_users.erase(connfd);
+    ret=epoll_ctl(m_eopllfd,EPOLL_CTL_DEL,connfd,nullptr);
+
+    if(ret<0) {
+        std::cout<<errno<<std::endl;
+        return -1;
+    }
+    return 0;
+}
 #endif

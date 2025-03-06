@@ -6,11 +6,13 @@ void func(){
     std::cout<<std::format("定时{}",count++)<<std::endl;
 }
 int main(){
-    std::cout<<"开始";
+    std::cout<<"开始"<<std::endl;
     Timer t;
     t.SetEvent(func);
-    t.Tick(1);
-    sleep(2);
-    t.Reset(2);
-    while(1);
+    t.Start(4);
+    sleep(6);
+    //t.Stop();
+    t.Tick(1000);
+
+    sleep(5);
 }

@@ -7,7 +7,7 @@ include_directories(/usr/local/include)
 link_directories(/usr/local/lib)
 
 add_library(Server-lib
-    source/connection_pool.cpp
+    source/dbPool.cpp
     source/timer.cpp
 
 )
@@ -30,16 +30,16 @@ find_package(Threads REQUIRED)
 #                         Threads::Threads
 #                         )
 
-add_executable(test test/test_thread.cpp)
-target_include_directories(test PRIVATE head)
+# add_executable(test test/test_thread.cpp)
+# target_include_directories(test PRIVATE head)
 
 
 
-target_link_libraries(  test PRIVATE
-                        Server-lib
-                        ${MYSQLCLIENT_LIB}
-                        Threads::Threads
-                        )
+# target_link_libraries(  test PRIVATE
+#                         Server-lib
+#                         ${MYSQLCLIENT_LIB}
+#                         Threads::Threads
+#                         )
 
 add_executable(timer test/test_timer.cpp)
 target_include_directories(timer PRIVATE head)

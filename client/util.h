@@ -7,8 +7,7 @@ struct Require{
     static const size_t HEADLEN;
     struct Head{
         size_t Length;
-        uint32_t SourceId;
-        uint32_t DestinationId;
+        int operation;
     };
     Head m_head;
     std::string m_data="";
