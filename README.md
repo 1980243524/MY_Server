@@ -1,5 +1,6 @@
 # c++多功能聊天室
-
+## qt客户端
+https://github.com/1980243524/My_Client
 # 环境搭建
 ## linux开发环境
 要求至少c++20标准 
