@@ -6,6 +6,7 @@
 struct User{
     std::string m_name;
     int m_fd;
+    uint32_t id=0;
     std::shared_ptr<Timer> m_timer;
     User()=default;
     User(std::string name,int fd):m_name(name),m_fd(fd),m_timer(std::make_shared<Timer>()) {}

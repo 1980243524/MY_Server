@@ -6,7 +6,31 @@
 #include <iostream>
 #include<format>
 #include<memory>
+#include<map>
+#include<vector>
 int const CONNECT_SEMAPHOR_MAX=100;
+
+class SqlResult{
+public:
+
+    SqlResult(MYSQL_RES* result):m_result(result),m_rowNum(mysql_num_rows(m_result)) {}
+
+    ~SqlResult(){mysql_free_result(m_result);}
+    SqlResult& operator=(MYSQL_RES* res){
+        m_result=res;
+        return *this;
+    }
+    bool operator==(void* other){return m_result==other;}
+    bool operator!(){return !m_result;}
+    int getNum()const {return m_rowNum;}
+    MYSQL_RES* get(){return m_result;}
+
+    std::vector<std::map<std::string,std::string>> getRows(int first=0,int last=-1 );
+private:
+    MYSQL_RES* m_result;
+    const int m_rowNum;
+};
+
 
 class Mysql{
 public:
@@ -27,11 +51,13 @@ public:
         m_conn=other.m_conn;
         other.m_conn=nullptr;
     }
+
     ~Mysql(){
-        mysql_close(m_conn);
-        delete m_conn;
+        if(m_conn){
+            mysql_close(m_conn);
+        }
     }
-    int Select(std::string&& sql,MYSQL_RES* result);
+    int Select(std::string&& sql,std::shared_ptr<SqlResult>& result);
     int Insert(std::string&& sql);
     int Delete(std::string&& sql);
     int Update(std::string&& sql);
@@ -43,6 +69,7 @@ public:
 private:
     MYSQL* m_conn;
 };
+
 
 class DbPool
 {
@@ -70,7 +97,18 @@ private:
     std::string m_user;		 //登陆数据库用户名
     std::string m_passWord;	 //登陆数据库密码
     std::string m_databaseName; //使用数据库名
+};
 
-
+class MysqlRAII{
+public:
+    MysqlRAII(std::shared_ptr<DbPool> pool):m_pool(pool),m_conn(pool->DispathConnection()) {
+    }
+    ~MysqlRAII(){
+        m_pool->FreeConnection(std::move(m_conn));
+    }
+    Mysql& getConn(){return m_conn;}
+private:
+    std::shared_ptr<DbPool> m_pool;
+    Mysql m_conn;
 };
 #endif

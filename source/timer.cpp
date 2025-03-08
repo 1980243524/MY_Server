@@ -34,6 +34,7 @@ void Timer::Stop(){
         std::lock_guard lock(m_mutex);
         m_stoped=true;
     }
+    if(m_thread->joinable())
     m_thread->join();
 }
 

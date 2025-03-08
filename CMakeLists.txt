@@ -9,7 +9,9 @@ link_directories(/usr/local/lib)
 add_library(Server-lib
     source/dbPool.cpp
     source/timer.cpp
-
+    source/chatserver.cpp
+    source/threadPool.cpp
+    source/util.cpp
 )
 
 # 查找 MySQL 客户端库
@@ -41,14 +43,14 @@ find_package(Threads REQUIRED)
 #                         Threads::Threads
 #                         )
 
-add_executable(timer test/test_timer.cpp)
-target_include_directories(timer PRIVATE head)
+# add_executable(timer test/test_timer.cpp)
+# target_include_directories(timer PRIVATE head)
 
-target_link_libraries(  timer PRIVATE
-                        Server-lib
-                        ${MYSQLCLIENT_LIB}
-                        Threads::Threads
-                        )
+# target_link_libraries(  timer PRIVATE
+#                         Server-lib
+#                         ${MYSQLCLIENT_LIB}
+#                         Threads::Threads
+#                         )
 
 add_executable(server test/test_server.cpp)
 target_include_directories(server PRIVATE head)

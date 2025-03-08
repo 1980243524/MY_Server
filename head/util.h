@@ -3,6 +3,7 @@
 #include<vector>
 #include<cstring>
 #include<iostream>
+#include<cstdint>
 struct Require{
     static const size_t HEADLEN;
     struct Head{
@@ -28,15 +29,22 @@ struct Require{
         return HEADLEN+m_head.Length;
     }
 };
-const size_t Require::HEADLEN=16;
+
 
 struct Response{
     struct Head{
         size_t Length;
-        int Code;
-        int type;
+        uint32_t SourceId;
+        uint32_t DestinationId;
+        uint32_t Code;
+        Head()=default;
+        Head(size_t length,uint32_t sourceId,uint32_t destinationId,uint32_t code)
+                            :Length(length),SourceId(sourceId),DestinationId(destinationId),Code(code) {}
     };
-
+    Response()=default;
+    Response(uint32_t sourceId,uint32_t destinationId,uint32_t code,std::string message)
+                            :m_head(message.size(),sourceId,destinationId,code),m_data(message) {}
+                            
     static const size_t HEADLEN;
     Head m_head;
     std::string m_data;
@@ -56,37 +64,8 @@ struct Response{
     }
 };
 
-const size_t Response::HEADLEN=16;
+std::vector<std::byte> Serialize(const Require& obj);
 
-std::vector<std::byte> Serialize(const Require& obj){
-    std::vector<std::byte> result(obj.size());
-    std::memcpy(result.data(), &obj.m_head, Require::HEADLEN);
-    std::memcpy(result.data()+Require::HEADLEN, obj.m_data.data(), obj.m_head.Length);
-    return result;
-}
-
-std::vector<std::byte> Serialize(const Response& obj){
-    std::vector<std::byte> result(obj.size());
-    std::memcpy(result.data(), &obj, Response::HEADLEN);
-    std::memcpy(result.data()+Response::HEADLEN, obj.m_data.data(), obj.m_head.Length);
-    return result;
-}
-
-// Require deserialize(const std::vector<std::byte>& buffer) {
-//     Require obj;
-//     size_t pos = 0;
-
-//     // 反序列化固定大小的成员
-//     std::memcpy(&obj.Length, &buffer[pos], sizeof(obj.Length));
-//     pos += sizeof(obj.Length);
-//     std::memcpy(&obj.operation, &buffer[pos], sizeof(obj.operation));
-//     pos += sizeof(obj.operation);
-
-//     // 反序列化 std::string
-
-//     obj.Data.assign(reinterpret_cast<const char*>(&buffer[pos]), obj.Length);
-
-//     return obj;
-// }
+std::vector<std::byte> Serialize(const Response& obj);
 
 #endif

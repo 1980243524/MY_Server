@@ -1,4 +1,4 @@
-#include"../head/ThreadPool.h"
+#include"../head/threadPool.h"
 
 int count=0;
 void func(){

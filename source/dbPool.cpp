@@ -1,33 +1,43 @@
 #include"../head/dbPool.h"
 
-int Mysql::Select(std::string&& sql,MYSQL_RES* result){
+// [first,last)
+std::vector<std::map<std::string,std::string>> SqlResult::getRows(int first,int last){
+    if(first<0||last>m_rowNum) {
+        std::cout<<"指定的区间错误,超出数据范围"<<std::endl;
+    }
+    if(last==-1) last=m_rowNum;
+    
+
+    int num_fields = mysql_num_fields(m_result);
+    MYSQL_FIELD *fields = mysql_fetch_fields(m_result);
+
+    mysql_data_seek(m_result, first);
+    MYSQL_ROW row;
+    std::vector<std::map<std::string,std::string>> ret;
+    for(int i=first;i<last;i++){
+        row = mysql_fetch_row(m_result);
+        std::map<std::string,std::string> temp;
+        for (int j = 0; j < num_fields; j++) {
+            temp[fields[j].name]=row[j];
+        }
+        ret.push_back(temp);
+    }
+    return ret;
+}
+
+int Mysql::Select(std::string&& sql,std::shared_ptr<SqlResult>& result){
     if (mysql_query(m_conn, sql.c_str())) {
         std::cerr << "SELECT失败: " << mysql_error(m_conn) << std::endl;
         return -1;
     }
 
     // 获取结果集
-    result = mysql_store_result(m_conn);
-    if (!result) {
+    result=std::make_shared<SqlResult>(mysql_store_result(m_conn)) ;
+    if (!result.get()) {
         std::cerr << "结果集为空或错误: " << mysql_error(m_conn) << std::endl;
         return -1;
     }
 
-    // // 获取字段数量
-    // int num_fields = mysql_num_fields(result);
-    // std::cout << "字段数量: " << num_fields << std::endl;
-
-    // // 遍历结果行
-    // MYSQL_ROW row;
-    // while ((row = mysql_fetch_row(result))) {
-    //     // 按字段索引获取数据（0-based）
-    //     std::cout << "ID: " << row[0]
-    //               << ", Name: " << row[1]
-    //               << ", Age: " << row[2] << std::endl;
-    // }
-
-    // // 释放结果集
-    // mysql_free_result(result);
     return 0;
 }
 
@@ -39,6 +49,7 @@ int Mysql::Insert(std::string&& sql){
     }
     // 获取受影响的行数
     std::cout << "插入成功，影响行数: " << mysql_affected_rows(m_conn) << std::endl;
+    
     return 0;
 }
 
@@ -75,8 +86,6 @@ void DbPool::init(std::string url, std::string User, std::string PassWord, std::
 
     for(int i=0;i<MaxConn;i++)
     {
-        
-        
         std::lock_guard lock(connections_mutex);
         connections.push(Mysql(url,User,PassWord,DBName,Port));
 
@@ -86,15 +95,14 @@ void DbPool::init(std::string url, std::string User, std::string PassWord, std::
 
 Mysql DbPool::DispathConnection()
 {
-
-   
    num_free_connection.acquire();   //空闲连接信号量P操作
 
    std::lock_guard lock(connections_mutex);
+   
    Mysql conn(std::move(connections.front()));
    connections.pop();
 
-   return conn;
+   return std::move(conn);
 }
 
 bool DbPool::FreeConnection(Mysql&& conn)
