@@ -35,6 +35,18 @@ void ChatServer::AddUser(int id, std::shared_ptr<Session> &&session) {
 
 void ChatServer::Start() { DoAccept(); }
 
-void ChatServer::Breadcast(MsgNode msg) {}
+void ChatServer::Breadcast(const MsgNode &msg) {
+  std::lock_guard lock(mu_);
+  for (const auto &session : users_) {
+    if (auto shared_session = session.second.lock()) {
+      shared_session->SendMsg(msg);
+    }
+  }
+}
 
-void ChatServer::SendById(int id, MsgNode msg) {}
+void ChatServer::SendById(int id, const MsgNode &msg) {
+  std::lock_guard lock(mu_);
+  if (auto shared_session = users_[id].lock()) {
+    shared_session->SendMsg(msg);
+  }
+}

@@ -10,6 +10,7 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <iostream>
 #include <memory>
+#include <queue>
 #include <string>
 #include <unordered_map>
 #include "dbPool.h"
@@ -33,8 +34,8 @@ class ChatServer {
   void DoAccept();
   void DeleteUser(int id);
   void AddUser(int id, std::shared_ptr<Session> &&session);
-  void Breadcast(MsgNode msg);
-  void SendById(int id, MsgNode msg);
+  void Breadcast(const MsgNode &msg);
+  void SendById(int id, const MsgNode &msg);
 
  private:
   DbPool::ptr db_pool_;
@@ -42,6 +43,7 @@ class ChatServer {
   boost::asio::io_context &io_;
   boost::asio::ip::tcp::acceptor acceptor_;
   std::unordered_map<int, std::weak_ptr<Session>> users_;
+  std::queue<MsgNode> public_msg_q_;
   std::mutex mu_;
 };
 

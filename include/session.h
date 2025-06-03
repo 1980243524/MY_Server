@@ -28,7 +28,8 @@ class Session : public std::enable_shared_from_this<Session> {
   void Start() { DoRead(); }
   void HandleRead();
   void DoRead();
-  void SendMsg(const MsgNode &&msg) { mq_.PushMsg(msg, shared_from_this()); }
+  // void SendMsg(const MsgNode &&msg) { mq_.PushMsg(msg, shared_from_this()); }
+  void SendMsg(const MsgNode &msg) { mq_.PushMsg(msg, shared_from_this()); }
   void Login();
   void Signup();
   void Echo();
