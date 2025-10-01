@@ -3,3 +3,6 @@ build
 .vscode
 client
 main.cpp
+.cache
+.clang-format
+.clang-tidy
